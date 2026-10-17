@@ -98,6 +98,17 @@ input,select,textarea{width:100%;font:inherit;color:var(--text);background:var(-
   <label>알람 시간</label>
   <input type="time" id="alarmTime" value="20:00">
   <p class="hint">설정한 시간까지 그날 운동 기록이 없으면 알림이 옵니다. 앱(홈 화면에 추가한 앱 포함)이 열려 있거나 백그라운드에 살아 있을 때 동작합니다.</p>
+  <hr style="border:0;border-top:1px solid var(--line);margin:16px 0 4px">
+  <h2 style="margin-top:12px">구글시트 동기화</h2>
+  <label>웹 앱 URL</label>
+  <input id="syncUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+  <label>토큰</label>
+  <input id="syncToken" type="password" autocomplete="off">
+  <div class="tools">
+    <button id="syncPull" type="button">시트에서 불러오기</button>
+    <button id="syncPushAll" type="button">전체 시트로 올리기</button>
+  </div>
+  <p class="hint" id="syncStatus"></p>
   <div class="actions">
     <button id="setTest" type="button">테스트 알림</button>
     <button id="setClose" type="button">닫기</button>
@@ -113,6 +124,7 @@ const store = {
 };
 let logs = store.get('p100.logs', {});            // { 'YYYY-MM-DD': [entry,...] }
 let cfg  = store.get('p100.cfg', { on: false, time: '20:00' });
+cfg.sync = cfg.sync || { url: '', token: '' };
 const save = () => store.set('p100.logs', logs);
 
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -193,6 +205,7 @@ function listEntries(){
       logs[selected] = logs[selected].filter(x => x.id !== e.id);
       if (!logs[selected].length) delete logs[selected];
       save(); listEntries(); render(); resetForm();
+      enqueue({ action: 'delete', id: e.id });
     };
     btns.style.cssText = 'display:flex;gap:4px;align-items:flex-start';
     btns.append(ed, del); div.append(info, btns); box.appendChild(div);
@@ -203,15 +216,19 @@ $('form').addEventListener('submit', ev => {
   const data = {}; fields.forEach(f => data[f] = $(f).value.trim());
   const id = $('editId').value;
   const list = logs[selected] = logs[selected] || [];
-  if (id){ Object.assign(list.find(x => x.id === id), data); }
-  else list.push({ id: crypto.randomUUID(), ...data });
+  let entry;
+  if (id){ entry = Object.assign(list.find(x => x.id === id), data); }
+  else { entry = { id: crypto.randomUUID(), ...data }; list.push(entry); }
+  enqueue({ action: 'upsert', date: selected, entry });
   save(); resetForm(); listEntries(); render(); scheduleCheck();
 });
 $('dayClose').onclick = () => $('dayDlg').close();
 
 /* ---------- alarm ---------- */
 $('btnSettings').onclick = () => {
-  $('alarmOn').checked = cfg.on; $('alarmTime').value = cfg.time; $('setDlg').showModal();
+  $('alarmOn').checked = cfg.on; $('alarmTime').value = cfg.time;
+  $('syncUrl').value = cfg.sync.url; $('syncToken').value = cfg.sync.token;
+  $('syncStatus').textContent = ''; $('setDlg').showModal();
 };
 $('setClose').onclick = () => $('setDlg').close();
 async function ensurePermission(){
@@ -226,9 +243,10 @@ async function notify(title, body, tag){
   if (reg) reg.showNotification(title, opts); else new Notification(title, opts);
 }
 $('setSave').onclick = async () => {
-  cfg = { on: $('alarmOn').checked, time: $('alarmTime').value || '20:00' };
+  cfg = { on: $('alarmOn').checked, time: $('alarmTime').value || '20:00',
+          sync: { url: $('syncUrl').value.trim(), token: $('syncToken').value.trim() } };
   if (cfg.on && !(await ensurePermission())) cfg.on = false;
-  store.set('p100.cfg', cfg); $('setDlg').close(); scheduleCheck();
+  store.set('p100.cfg', cfg); $('setDlg').close(); scheduleCheck(); flush();
 };
 $('setTest').onclick = async () => { if (await ensurePermission()) notify('Physique100', '테스트 알림입니다 💪', 'test'); };
 
@@ -261,12 +279,61 @@ async function tryTrigger(at){
     });
   }catch{}
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden){ render(); scheduleCheck(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden){ render(); scheduleCheck(); flush(); } });
+
+/* ---------- google sheet sync ---------- */
+let queue = store.get('p100.queue', []);
+let flushing = false;
+const syncOn = () => cfg.sync.url && cfg.sync.token;
+function setStatus(t){ $('syncStatus').textContent = t; }
+async function call(body){
+  const res = await fetch(cfg.sync.url, {
+    method: 'POST', redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },   // preflight 회피
+    body: JSON.stringify({ token: cfg.sync.token, ...body })
+  });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'sync failed');
+  return j;
+}
+function enqueue(op){
+  if (!syncOn()) return;
+  queue.push(op); store.set('p100.queue', queue); flush();
+}
+async function flush(){
+  if (flushing || !syncOn() || !queue.length) return;
+  flushing = true;
+  try{
+    while (queue.length){ await call(queue[0]); queue.shift(); store.set('p100.queue', queue); }
+    setStatus('시트에 동기화됨 ✓');
+  }catch(e){ setStatus('동기화 대기 중 (' + e.message + ') — 연결되면 다시 시도해요'); }
+  flushing = false;
+}
+$('syncPull').onclick = async () => {
+  cfg.sync = { url: $('syncUrl').value.trim(), token: $('syncToken').value.trim() };
+  if (!syncOn()) return setStatus('URL과 토큰을 입력하세요.');
+  if (!confirm('현재 폰의 기록을 시트 내용으로 덮어쓸까요?')) return;
+  try{
+    setStatus('불러오는 중...');
+    const j = await call({ action: 'list' });
+    logs = j.logs; save(); queue = []; store.set('p100.queue', queue);
+    store.set('p100.cfg', cfg); render(); setStatus('불러오기 완료 ✓');
+  }catch(e){ setStatus('실패: ' + e.message); }
+};
+$('syncPushAll').onclick = async () => {
+  cfg.sync = { url: $('syncUrl').value.trim(), token: $('syncToken').value.trim() };
+  if (!syncOn()) return setStatus('URL과 토큰을 입력하세요.');
+  store.set('p100.cfg', cfg);
+  for (const [date, list] of Object.entries(logs)) list.forEach(entry => queue.push({ action: 'upsert', date, entry }));
+  store.set('p100.queue', queue);
+  setStatus('올리는 중...'); await flush();
+};
+window.addEventListener('online', flush);
 
 /* ---------- backup ---------- */
 $('btnExport').onclick = () => {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify({ logs, cfg }, null, 2)], { type: 'application/json' }));
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ logs, cfg: { on: cfg.on, time: cfg.time } }, null, 2)], { type: 'application/json' }));
   a.download = `physique100-${today()}.json`; a.click();
 };
 $('btnImport').onclick = () => $('file').click();
@@ -274,14 +341,14 @@ $('file').onchange = async e => {
   try{
     const d = JSON.parse(await e.target.files[0].text());
     if (!d.logs || !confirm('현재 기록을 불러온 백업으로 덮어쓸까요?')) return;
-    logs = d.logs; if (d.cfg) cfg = d.cfg;
+    logs = d.logs; if (d.cfg) cfg = { ...cfg, on: d.cfg.on, time: d.cfg.time };
     save(); store.set('p100.cfg', cfg); render(); scheduleCheck();
   }catch{ alert('올바른 백업 파일이 아니에요.'); }
   e.target.value = '';
 };
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-render(); scheduleCheck();
+render(); scheduleCheck(); flush();
 </script>
 </body>
 </html>
