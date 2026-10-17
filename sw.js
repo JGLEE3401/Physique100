@@ -1,4 +1,4 @@
-const CACHE = 'physique100-v2';
+const CACHE = 'physique100-v3';
 const FILES = ['./', './index.html', './manifest.json', './icons/icon.svg'];
 
 self.addEventListener('install', e => {

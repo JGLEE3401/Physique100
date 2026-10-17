@@ -3,68 +3,185 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#111418">
+<meta name="theme-color" content="#f2f3f8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Physique100</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon.svg">
 <style>
-:root{--bg:#111418;--card:#1b2027;--line:#2a313b;--text:#e8edf2;--dim:#8a95a3;--ok:#4ade80;--miss:#f87171;--acc:#4ade80}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,"Noto Sans KR",sans-serif;padding:env(safe-area-inset-top) 16px 40px}
-main{max-width:480px;margin:0 auto}
-header{display:flex;align-items:center;justify-content:space-between;padding:16px 0}
-h1{font-size:18px;margin:0}
-button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer}
-button.primary{background:var(--acc);color:#0b140e;border-color:var(--acc);font-weight:600}
-button.danger{color:var(--miss)}
-.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.nav b{font-size:18px}
-.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.dow{text-align:center;color:var(--dim);font-size:12px;padding:4px 0}
-.day{aspect-ratio:1;background:var(--card);border:1px solid transparent;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;font-size:14px;position:relative}
-.day.empty{background:none;cursor:default}
-.day.today{border-color:var(--text)}
-.day.done{background:#16301f;color:var(--ok);font-weight:600}
-.day.miss{color:var(--miss)}
-.day.future{color:var(--dim)}
-.day small{font-size:10px;opacity:.8}
-.stats{display:flex;gap:8px;margin:16px 0}
-.stats div{flex:1;background:var(--card);border-radius:10px;padding:10px;text-align:center}
-.stats b{display:block;font-size:20px;color:var(--ok)}
-.stats span{font-size:12px;color:var(--dim)}
-.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-dialog{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:16px;width:min(440px,calc(100% - 24px));padding:18px;max-height:90vh}
-dialog::backdrop{background:#000a}
-dialog h2{margin:0 0 12px;font-size:17px}
-label{display:block;font-size:12px;color:var(--dim);margin:10px 0 4px}
-input,select,textarea{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px}
+:root{--bg:#f2f3f8;--card:#fff;--text:#2a2d34;--dim:#a2a8b4;--line:#e6e8ef;--acc:#d9525b;--acc-soft:#fbe9ea;--sat:#5b8def}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,"Noto Sans KR","Apple SD Gothic Neo",sans-serif}
+#app{max-width:480px;margin:0 auto;min-height:100vh;padding:env(safe-area-inset-top) 20px calc(84px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+.hidden{display:none!important}
+
+/* top tabs */
+.tabs{display:flex;gap:28px;padding:22px 4px 8px}
+.tabs button{font-size:20px;font-weight:700;color:var(--dim);padding:4px 0 8px;position:relative}
+.tabs button.on{color:var(--text)}
+.tabs button.on::after{content:"";position:absolute;left:10%;right:10%;bottom:0;height:3px;border-radius:3px;background:var(--acc)}
+
+/* month nav */
+.nav{display:flex;align-items:center;justify-content:space-between;margin:14px 0 18px}
+.nav b{font-size:22px}
+.nav button{width:44px;height:44px;border-radius:14px;background:var(--card);box-shadow:0 4px 12px #0000000d;font-size:22px;font-weight:700}
+
+/* calendar */
+.grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:6px}
+.dow{text-align:center;font-weight:700;font-size:15px;padding:6px 0 10px}
+.sun{color:var(--acc)}.sat{color:var(--sat)}
+.cell{height:54px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;position:relative;cursor:pointer}
+.cell.other{opacity:.3}
+.cell.today span{background:var(--text);color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.cell svg{width:40px;height:40px;position:absolute}
+.cell.done{font-size:0}
+.cell.today.done span{background:none;width:0;height:0}
+.cell.today.done::after{content:"";position:absolute;bottom:2px;width:6px;height:6px;border-radius:50%;background:var(--text)}
+.cell .badge{position:absolute;right:6px;bottom:4px;font-size:10px;font-weight:700;background:var(--acc);color:#fff;border-radius:8px;padding:0 5px;line-height:15px}
+
+.summary{display:flex;background:var(--card);border-radius:20px;padding:16px 4px;margin-top:22px;box-shadow:0 6px 20px #0000000a}
+.summary div{flex:1;text-align:center;border-left:1px solid var(--line)}
+.summary div:first-child{border:0}
+.summary b{display:block;font-size:24px;color:var(--acc)}
+.summary span{font-size:12px;color:var(--dim)}
+
+/* daily list */
+.dcard{background:var(--card);border-radius:18px;padding:14px 16px;margin-bottom:10px;box-shadow:0 6px 20px #0000000a;cursor:pointer}
+.dcard h3{margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:6px}
+.dcard h3 svg{width:20px;height:20px}
+.dcard p{margin:2px 0;font-size:14px}
+.dcard p small{color:var(--dim);margin-left:6px}
+.empty{text-align:center;color:var(--dim);padding:48px 0}
+
+/* stats */
+.sec{background:var(--card);border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 6px 20px #0000000a}
+.sec h3{margin:0 0 12px;font-size:15px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--bg);border-radius:14px;padding:12px}
+.tile b{display:block;font-size:20px;color:var(--acc)}
+.tile span{font-size:12px;color:var(--dim)}
+.bars{display:flex;align-items:flex-end;gap:8px;height:130px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:var(--dim)}
+.bar i{display:block;width:100%;max-width:30px;background:var(--acc);border-radius:6px 6px 0 0;min-height:2px;opacity:.9}
+.bar em{font-style:normal;color:var(--text);font-weight:700;margin-bottom:3px}
+.bar u{text-decoration:none;margin-top:4px;white-space:nowrap}
+.hbar{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:14px}
+.hbar .nm{width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar .tr{flex:1;height:10px;background:var(--bg);border-radius:6px;overflow:hidden}
+.hbar .tr i{display:block;height:100%;background:var(--acc);border-radius:6px}
+.hbar .v{width:34px;text-align:right;color:var(--dim);font-size:12px}
+
+/* settings */
+.set label.lb{display:block;font-size:13px;color:var(--dim);margin:14px 0 6px}
+.set .switch{display:flex;align-items:center;justify-content:space-between;font-weight:600}
+.set input[type=checkbox]{width:22px;height:22px;accent-color:var(--acc)}
+input,select,textarea{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:11px}
+.btn{background:var(--bg);border-radius:12px;padding:11px 14px;font-weight:600;font-size:14px}
+.btn.primary{background:var(--acc);color:#fff}
+.btn.danger{color:var(--acc)}
 .row{display:flex;gap:8px}.row>*{flex:1}
-.entry{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
+.wrap{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.hint{font-size:12px;color:var(--dim);margin:8px 0 0}
+
+/* bottom nav */
+.bottom{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+.bottom div{max-width:480px;margin:0 auto;display:flex}
+.bottom button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 0 8px;font-size:11px;color:var(--dim)}
+.bottom button svg{width:26px;height:26px}
+.bottom button.on{color:var(--text);font-weight:700}
+
+/* day dialog */
+dialog{background:var(--card);color:var(--text);border:0;border-radius:24px;width:min(440px,calc(100% - 24px));padding:20px;max-height:90vh;box-shadow:0 20px 60px #0004}
+dialog::backdrop{background:#0006}
+dialog h2{margin:0 0 14px;font-size:18px}
+label{display:block;font-size:12px;color:var(--dim);margin:12px 0 5px}
+.entry{background:var(--bg);border-radius:14px;padding:11px 12px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
 .entry p{margin:2px 0 0;color:var(--dim);font-size:13px}
-.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-.hint{font-size:12px;color:var(--dim);margin-top:8px}
+.entry .acts{display:flex;gap:4px;align-items:flex-start}
+.entry .acts button{background:var(--card);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:600}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 </style>
 </head>
 <body>
-<main>
-  <header><h1>💪 Physique100</h1><button id="btnSettings">⚙ 알람 설정</button></header>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="flame" viewBox="0 0 24 24">
+      <path fill="#e8555d" d="M12 1.5c.9 3.6 6 6.2 6 11.6a6 6 0 0 1-12 0c0-2.2.9-3.7 2-5 .3 1.5 1 2.4 1.9 2.8C9.6 8.3 10.5 4.7 12 1.5z"/>
+      <path fill="#fbc531" d="M12 22a3.4 3.4 0 0 1-3.4-3.4c0-1.8 1.5-2.9 2.2-4.4.4.9 1 1.2 1.5 1.8.5-.4.9-1.1 1-1.8.6 1.6 2.1 2.6 2.1 4.4A3.4 3.4 0 0 1 12 22z"/>
+    </symbol>
+    <symbol id="gear" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M19.4 13a7.7 7.7 0 0 0 0-2l2-1.6a.5.5 0 0 0 .1-.6l-1.9-3.3a.5.5 0 0 0-.6-.2l-2.4 1a7 7 0 0 0-1.7-1l-.4-2.5a.5.5 0 0 0-.5-.4h-3.8a.5.5 0 0 0-.5.4L9.3 5.3a7 7 0 0 0-1.7 1l-2.4-1a.5.5 0 0 0-.6.2L2.7 8.8a.5.5 0 0 0 .1.6l2 1.6a7.7 7.7 0 0 0 0 2l-2 1.6a.5.5 0 0 0-.1.6l1.9 3.3c.1.2.4.3.6.2l2.4-1c.5.4 1.1.7 1.7 1l.4 2.5c0 .2.3.4.5.4h3.8c.2 0 .5-.2.5-.4l.4-2.5c.6-.3 1.2-.6 1.7-1l2.4 1c.2.1.5 0 .6-.2l1.9-3.3a.5.5 0 0 0-.1-.6zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/>
+    </symbol>
+  </defs>
+</svg>
 
-  <div class="nav">
-    <button id="prev">‹</button><b id="title"></b><button id="next">›</button>
-  </div>
-  <div class="grid" id="grid"></div>
+<div id="app">
+  <section id="pgWorkout">
+    <div class="tabs" id="tabs">
+      <button data-t="daily">일별</button>
+      <button data-t="cal" class="on">캘린더</button>
+      <button data-t="stats">통계</button>
+    </div>
+    <div class="nav"><button id="prev">‹</button><b id="title"></b><button id="next">›</button></div>
 
-  <div class="stats">
-    <div><b id="sMonth">0</b><span>이번 달 운동일</span></div>
-    <div><b id="sStreak">0</b><span>연속 일수</span></div>
-    <div><b id="sTotal">0</b><span>전체 운동일</span></div>
-  </div>
-  <div class="tools">
-    <button id="btnExport">백업 내보내기</button>
-    <button id="btnImport">백업 불러오기</button>
-    <input type="file" id="file" accept="application/json" hidden>
-  </div>
-</main>
+    <div id="tCal">
+      <div class="grid" id="grid"></div>
+      <div class="summary">
+        <div><b id="sCount">0/30</b><span>체크인 횟수</span></div>
+        <div><b id="sRate">0%</b><span>체크인 비율</span></div>
+        <div><b id="sVol">0kg</b><span>총 볼륨</span></div>
+      </div>
+    </div>
+    <div id="tDaily" class="hidden"></div>
+    <div id="tStats" class="hidden"></div>
+  </section>
+
+  <section id="pgSettings" class="set hidden">
+    <div class="tabs"><button class="on">설정</button></div>
+
+    <div class="sec">
+      <h3>알람</h3>
+      <div class="switch"><span>운동 안 한 날 알람 받기</span><input type="checkbox" id="alarmOn"></div>
+      <label class="lb">알람 시간</label>
+      <input type="time" id="alarmTime" value="20:00">
+      <p class="hint">설정한 시간까지 그날 기록이 없으면 알림이 와요. 앱이 열려 있거나 백그라운드에 살아 있을 때 동작해요. (iPhone은 홈 화면에 추가한 앱에서만 알림 가능)</p>
+      <div class="wrap"><button class="btn" id="setTest">테스트 알림</button></div>
+    </div>
+
+    <div class="sec">
+      <h3>구글시트 동기화</h3>
+      <label class="lb" style="margin-top:0">웹 앱 URL</label>
+      <input id="syncUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+      <label class="lb">토큰</label>
+      <input id="syncToken" type="password" autocomplete="off">
+      <div class="wrap">
+        <button class="btn" id="syncPull">시트에서 불러오기</button>
+        <button class="btn" id="syncPushAll">전체 시트로 올리기</button>
+      </div>
+      <p class="hint" id="syncStatus"></p>
+    </div>
+
+    <div class="sec">
+      <h3>백업</h3>
+      <div class="wrap" style="margin-top:0">
+        <button class="btn" id="btnExport">내보내기</button>
+        <button class="btn" id="btnImport">불러오기</button>
+        <input type="file" id="file" accept="application/json" hidden>
+      </div>
+    </div>
+
+    <button class="btn primary" id="setSave" style="width:100%;padding:14px">저장</button>
+    <p class="hint" id="saveMsg" style="text-align:center"></p>
+  </section>
+</div>
+
+<nav class="bottom"><div>
+  <button id="navW" class="on"><svg viewBox="0 0 24 24"><use href="#flame"/></svg>운동</button>
+  <button id="navS"><svg viewBox="0 0 24 24"><use href="#gear"/></svg>설정</button>
+</div></nav>
 
 <dialog id="dayDlg">
   <h2 id="dayTitle"></h2>
@@ -86,34 +203,10 @@ input,select,textarea{width:100%;font:inherit;color:var(--text);background:var(-
     <label>메모</label>
     <textarea id="memo" rows="2"></textarea>
     <div class="actions">
-      <button type="button" id="dayClose">닫기</button>
-      <button class="primary" id="save" type="submit">추가</button>
+      <button class="btn" type="button" id="dayClose">닫기</button>
+      <button class="btn primary" id="save" type="submit">추가</button>
     </div>
   </form>
-</dialog>
-
-<dialog id="setDlg">
-  <h2>알람 설정</h2>
-  <label><input type="checkbox" id="alarmOn" style="width:auto"> 운동 안 한 날 알람 받기</label>
-  <label>알람 시간</label>
-  <input type="time" id="alarmTime" value="20:00">
-  <p class="hint">설정한 시간까지 그날 운동 기록이 없으면 알림이 옵니다. 앱(홈 화면에 추가한 앱 포함)이 열려 있거나 백그라운드에 살아 있을 때 동작합니다.</p>
-  <hr style="border:0;border-top:1px solid var(--line);margin:16px 0 4px">
-  <h2 style="margin-top:12px">구글시트 동기화</h2>
-  <label>웹 앱 URL</label>
-  <input id="syncUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec">
-  <label>토큰</label>
-  <input id="syncToken" type="password" autocomplete="off">
-  <div class="tools">
-    <button id="syncPull" type="button">시트에서 불러오기</button>
-    <button id="syncPushAll" type="button">전체 시트로 올리기</button>
-  </div>
-  <p class="hint" id="syncStatus"></p>
-  <div class="actions">
-    <button id="setTest" type="button">테스트 알림</button>
-    <button id="setClose" type="button">닫기</button>
-    <button class="primary" id="setSave" type="button">저장</button>
-  </div>
 </dialog>
 
 <script>
@@ -128,57 +221,23 @@ cfg.sync = cfg.sync || { url: '', token: '' };
 const save = () => store.set('p100.logs', logs);
 
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const parseKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
 const today = () => ymd(new Date());
+const has = k => !!logs[k]?.length;
 let view = new Date(); view.setDate(1);
+let tab = 'cal';
 let selected = null;
 
-/* ---------- calendar ---------- */
-function render(){
-  const y = view.getFullYear(), m = view.getMonth();
-  $('title').textContent = `${y}년 ${m+1}월`;
-  const g = $('grid'); g.innerHTML = '';
-  '일월화수목금토'.split('').forEach(c => g.insertAdjacentHTML('beforeend', `<div class="dow">${c}</div>`));
-  const first = new Date(y, m, 1).getDay(), last = new Date(y, m+1, 0).getDate(), t = today();
-  for (let i = 0; i < first; i++) g.insertAdjacentHTML('beforeend', '<div class="day empty"></div>');
-  for (let d = 1; d <= last; d++){
-    const key = ymd(new Date(y, m, d)), n = (logs[key] || []).length;
-    const cls = ['day'];
-    if (key === t) cls.push('today');
-    if (n) cls.push('done'); else if (key < t) cls.push('miss'); else if (key > t) cls.push('future');
-    const el = document.createElement('div');
-    el.className = cls.join(' ');
-    el.innerHTML = `${d}${n ? `<small>✓ ${n}</small>` : ''}`;
-    el.onclick = () => openDay(key);
-    g.appendChild(el);
-  }
-  stats();
-}
-function stats(){
-  const keys = Object.keys(logs).filter(k => logs[k].length);
-  const prefix = `${view.getFullYear()}-${String(view.getMonth()+1).padStart(2,'0')}`;
-  $('sMonth').textContent = keys.filter(k => k.startsWith(prefix)).length;
-  $('sTotal').textContent = keys.length;
-  let s = 0, d = new Date();
-  if (!logs[ymd(d)]?.length) d.setDate(d.getDate()-1);   // 오늘 아직이면 어제부터 셈
-  while (logs[ymd(d)]?.length){ s++; d.setDate(d.getDate()-1); }
-  $('sStreak').textContent = s;
-}
-$('prev').onclick = () => { view.setMonth(view.getMonth()-1); render(); };
-$('next').onclick = () => { view.setMonth(view.getMonth()+1); render(); };
-
-/* ---------- day dialog ---------- */
-const fields = ['type','sets','reps','weight','minutes','distance','memo'];
-function openDay(key){
-  selected = key;
-  const [y,m,d] = key.split('-');
-  $('dayTitle').textContent = `${y}년 ${+m}월 ${+d}일`;
-  resetForm(); listEntries();
-  const types = [...new Set(Object.values(logs).flat().map(e => e.type))];
-  $('types').innerHTML = types.map(t => `<option value="${t.replace(/"/g,'&quot;')}">`).join('');
-  $('dayDlg').showModal();
-}
-function resetForm(){
-  fields.forEach(f => $(f).value = ''); $('editId').value = ''; $('save').textContent = '추가';
+/* ---------- helpers ---------- */
+const num = v => parseFloat(v) || 0;
+const volume = e => (num(e.sets) || 1) * num(e.reps) * num(e.weight);
+const fmtVol = kg => kg >= 1000 ? (kg / 1000).toFixed(1).replace(/\.0$/, '') + 't' : Math.round(kg) + 'kg';
+const fmtMin = m => m >= 60 ? `${Math.floor(m/60)}시간 ${m%60}분` : `${m}분`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const monthPrefix = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+function entriesOf(prefix){
+  return Object.keys(logs).filter(k => has(k) && (!prefix || k.startsWith(prefix))).sort()
+    .flatMap(k => logs[k].map(e => ({ date: k, e })));
 }
 function summary(e){
   const p = [];
@@ -188,6 +247,155 @@ function summary(e){
   if (e.distance) p.push(`${e.distance}km`);
   return p.join(' · ');
 }
+const flame = cls => `<svg class="${cls||''}" viewBox="0 0 24 24"><use href="#flame"/></svg>`;
+
+/* ---------- render ---------- */
+function render(){
+  const y = view.getFullYear(), m = view.getMonth();
+  $('title').textContent = `${y}년 ${m+1}월`;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  $('tCal').classList.toggle('hidden', tab !== 'cal');
+  $('tDaily').classList.toggle('hidden', tab !== 'daily');
+  $('tStats').classList.toggle('hidden', tab !== 'stats');
+  if (tab === 'cal') renderCal();
+  if (tab === 'daily') renderDaily();
+  if (tab === 'stats') renderStats();
+}
+
+function renderCal(){
+  const y = view.getFullYear(), m = view.getMonth(), t = today();
+  const g = $('grid'); g.innerHTML = '';
+  '일월화수목금토'.split('').forEach((c, i) =>
+    g.insertAdjacentHTML('beforeend', `<div class="dow ${i===0?'sun':i===6?'sat':''}">${c}</div>`));
+  const first = new Date(y, m, 1).getDay(), last = new Date(y, m+1, 0).getDate();
+  const total = Math.ceil((first + last) / 7) * 7;
+  for (let i = 0; i < total; i++){
+    const d = new Date(y, m, 1 - first + i), key = ymd(d), inMonth = d.getMonth() === m, n = logs[key]?.length || 0;
+    const col = d.getDay();
+    const el = document.createElement('div');
+    el.className = ['cell', inMonth ? '' : 'other', n ? 'done' : '', key === t ? 'today' : '', col===0?'sun':col===6?'sat':''].join(' ');
+    el.innerHTML = (n ? flame() : '') + `<span>${d.getDate()}</span>` + (n > 1 ? `<i class="badge">${n}</i>` : '');
+    el.onclick = () => openDay(key);
+    g.appendChild(el);
+  }
+  const prefix = monthPrefix(view);
+  const days = Object.keys(logs).filter(k => k.startsWith(prefix) && has(k)).length;
+  const vol = entriesOf(prefix).reduce((s, x) => s + volume(x.e), 0);
+  $('sCount').textContent = `${days}/${last}`;
+  $('sRate').textContent = Math.round(days / last * 100) + '%';
+  $('sVol').textContent = fmtVol(vol);
+}
+
+function renderDaily(){
+  const prefix = monthPrefix(view), box = $('tDaily');
+  const keys = Object.keys(logs).filter(k => k.startsWith(prefix) && has(k)).sort().reverse();
+  if (!keys.length){ box.innerHTML = '<div class="empty">이 달의 운동 기록이 없어요</div>'; return; }
+  const dn = '일월화수목금토';
+  box.innerHTML = '';
+  keys.forEach(k => {
+    const d = parseKey(k), card = document.createElement('div'); card.className = 'dcard';
+    const vol = logs[k].reduce((s, e) => s + volume(e), 0), min = logs[k].reduce((s, e) => s + num(e.minutes), 0);
+    card.innerHTML = `<h3>${flame()}${d.getMonth()+1}월 ${d.getDate()}일 (${dn[d.getDay()]})
+      <small style="color:var(--dim);font-weight:500;margin-left:auto">${[min ? fmtMin(min) : '', vol ? fmtVol(vol) : ''].filter(Boolean).join(' · ')}</small></h3>` +
+      logs[k].map(e => `<p><b>${esc(e.type)}</b><small>${esc([summary(e), e.memo].filter(Boolean).join(' — '))}</small></p>`).join('');
+    card.onclick = () => openDay(k);
+    box.appendChild(card);
+  });
+}
+
+function barChart(items, fmt){
+  const max = Math.max(1, ...items.map(i => i.v));
+  return `<div class="bars">${items.map(i =>
+    `<div class="bar"><em>${i.v ? (fmt ? fmt(i.v) : i.v) : ''}</em><i style="height:${i.v / max * 78}%"></i><u>${i.l}</u></div>`).join('')}</div>`;
+}
+function streaks(){
+  const keys = Object.keys(logs).filter(has).sort();
+  let best = 0, run = 0, prev = null;
+  keys.forEach(k => {
+    const d = parseKey(k);
+    run = prev && Math.round((d - prev) / 864e5) === 1 ? run + 1 : 1;
+    best = Math.max(best, run); prev = d;
+  });
+  let cur = 0, d = new Date();
+  if (!has(ymd(d))) d.setDate(d.getDate() - 1);
+  while (has(ymd(d))){ cur++; d.setDate(d.getDate() - 1); }
+  return { cur, best, total: keys.length };
+}
+function renderStats(){
+  const prefix = monthPrefix(view), es = entriesOf(prefix), st = streaks();
+  const days = new Set(es.map(x => x.date)).size;
+  const min = es.reduce((s, x) => s + num(x.e.minutes), 0);
+  const vol = es.reduce((s, x) => s + volume(x.e), 0);
+  const dist = es.reduce((s, x) => s + num(x.e.distance), 0);
+
+  // 최근 8주
+  const sun = new Date(); sun.setDate(sun.getDate() - sun.getDay());
+  const weeks = [];
+  for (let i = 7; i >= 0; i--){
+    const s = new Date(sun); s.setDate(s.getDate() - i * 7);
+    let c = 0; for (let j = 0; j < 7; j++){ const d = new Date(s); d.setDate(d.getDate() + j); if (has(ymd(d))) c++; }
+    weeks.push({ l: `${s.getMonth()+1}/${s.getDate()}`, v: c });
+  }
+  // 최근 6개월
+  const months = [];
+  for (let i = 5; i >= 0; i--){
+    const d = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1), p = monthPrefix(d);
+    months.push({ l: `${d.getMonth()+1}월`, v: Object.keys(logs).filter(k => k.startsWith(p) && has(k)).length });
+  }
+  // 종류별
+  const by = {};
+  es.forEach(x => by[x.e.type] = (by[x.e.type] || 0) + 1);
+  const top = Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 6), topMax = top[0]?.[1] || 1;
+
+  $('tStats').innerHTML = `
+    <div class="sec"><h3>${view.getMonth()+1}월 요약</h3><div class="tiles">
+      <div class="tile"><b>${days}일</b><span>운동한 날</span></div>
+      <div class="tile"><b>${min ? fmtMin(min) : '0분'}</b><span>총 운동 시간</span></div>
+      <div class="tile"><b>${fmtVol(vol)}</b><span>총 볼륨</span></div>
+      <div class="tile"><b>${+dist.toFixed(2)}km</b><span>총 거리</span></div>
+    </div></div>
+    <div class="sec"><h3>연속 기록</h3><div class="tiles">
+      <div class="tile"><b>${st.cur}일</b><span>현재 연속</span></div>
+      <div class="tile"><b>${st.best}일</b><span>최장 연속</span></div>
+      <div class="tile"><b>${st.total}일</b><span>전체 운동일</span></div>
+      <div class="tile"><b>${es.length}회</b><span>${view.getMonth()+1}월 운동 기록 수</span></div>
+    </div></div>
+    <div class="sec"><h3>주간 운동일 (최근 8주)</h3>${barChart(weeks)}</div>
+    <div class="sec"><h3>월별 운동일 (최근 6개월)</h3>${barChart(months)}</div>
+    <div class="sec"><h3>${view.getMonth()+1}월 운동 종류</h3>${top.length ? top.map(([n, c]) =>
+      `<div class="hbar"><span class="nm">${esc(n)}</span><span class="tr"><i style="width:${c / topMax * 100}%"></i></span><span class="v">${c}회</span></div>`).join('')
+      : '<div class="empty" style="padding:16px 0">기록이 없어요</div>'}</div>`;
+}
+
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; render(); });
+$('prev').onclick = () => { view.setMonth(view.getMonth()-1); render(); };
+$('next').onclick = () => { view.setMonth(view.getMonth()+1); render(); };
+
+/* ---------- bottom nav ---------- */
+function showPage(p){
+  $('pgWorkout').classList.toggle('hidden', p !== 'w');
+  $('pgSettings').classList.toggle('hidden', p !== 's');
+  $('navW').classList.toggle('on', p === 'w'); $('navS').classList.toggle('on', p === 's');
+  if (p === 's') fillSettings(); else render();
+  window.scrollTo(0, 0);
+}
+$('navW').onclick = () => showPage('w');
+$('navS').onclick = () => showPage('s');
+
+/* ---------- day dialog ---------- */
+const fields = ['type','sets','reps','weight','minutes','distance','memo'];
+function openDay(key){
+  selected = key;
+  const [y,m,d] = key.split('-');
+  $('dayTitle').textContent = `${y}년 ${+m}월 ${+d}일`;
+  resetForm(); listEntries();
+  const types = [...new Set(Object.values(logs).flat().map(e => e.type))];
+  $('types').innerHTML = types.map(t => `<option value="${esc(t)}">`).join('');
+  $('dayDlg').showModal();
+}
+function resetForm(){
+  fields.forEach(f => $(f).value = ''); $('editId').value = ''; $('save').textContent = '추가';
+}
 function listEntries(){
   const box = $('entries'); box.innerHTML = '';
   (logs[selected] || []).forEach(e => {
@@ -196,10 +404,10 @@ function listEntries(){
     const b = document.createElement('b'); b.textContent = e.type;
     const p = document.createElement('p'); p.textContent = [summary(e), e.memo].filter(Boolean).join(' — ');
     info.append(b, p);
-    const btns = document.createElement('div');
+    const btns = document.createElement('div'); btns.className = 'acts';
     const ed = document.createElement('button'); ed.textContent = '수정';
     ed.onclick = () => { fields.forEach(f => $(f).value = e[f] ?? ''); $('editId').value = e.id; $('save').textContent = '수정 저장'; };
-    const del = document.createElement('button'); del.textContent = '삭제'; del.className = 'danger';
+    const del = document.createElement('button'); del.textContent = '삭제'; del.style.color = 'var(--acc)';
     del.onclick = () => {
       if (!confirm('이 기록을 삭제할까요?')) return;
       logs[selected] = logs[selected].filter(x => x.id !== e.id);
@@ -207,7 +415,6 @@ function listEntries(){
       save(); listEntries(); render(); resetForm();
       enqueue({ action: 'delete', id: e.id });
     };
-    btns.style.cssText = 'display:flex;gap:4px;align-items:flex-start';
     btns.append(ed, del); div.append(info, btns); box.appendChild(div);
   });
 }
@@ -224,15 +431,14 @@ $('form').addEventListener('submit', ev => {
 });
 $('dayClose').onclick = () => $('dayDlg').close();
 
-/* ---------- alarm ---------- */
-$('btnSettings').onclick = () => {
+/* ---------- settings / alarm ---------- */
+function fillSettings(){
   $('alarmOn').checked = cfg.on; $('alarmTime').value = cfg.time;
   $('syncUrl').value = cfg.sync.url; $('syncToken').value = cfg.sync.token;
-  $('syncStatus').textContent = ''; $('setDlg').showModal();
-};
-$('setClose').onclick = () => $('setDlg').close();
+  $('saveMsg').textContent = '';
+}
 async function ensurePermission(){
-  if (!('Notification' in window)) { alert('이 브라우저는 알림을 지원하지 않아요.'); return false; }
+  if (!('Notification' in window)) { alert('이 브라우저는 알림을 지원하지 않아요. (iPhone은 홈 화면에 추가한 앱에서만 가능)'); return false; }
   if (Notification.permission === 'default') await Notification.requestPermission();
   if (Notification.permission !== 'granted'){ alert('알림 권한이 꺼져 있어요. 브라우저/기기 설정에서 허용해 주세요.'); return false; }
   return true;
@@ -245,8 +451,9 @@ async function notify(title, body, tag){
 $('setSave').onclick = async () => {
   cfg = { on: $('alarmOn').checked, time: $('alarmTime').value || '20:00',
           sync: { url: $('syncUrl').value.trim(), token: $('syncToken').value.trim() } };
-  if (cfg.on && !(await ensurePermission())) cfg.on = false;
-  store.set('p100.cfg', cfg); $('setDlg').close(); scheduleCheck(); flush();
+  if (cfg.on && !(await ensurePermission())) { cfg.on = false; $('alarmOn').checked = false; }
+  store.set('p100.cfg', cfg); scheduleCheck(); flush();
+  $('saveMsg').textContent = '저장했어요 ✓';
 };
 $('setTest').onclick = async () => { if (await ensurePermission()) notify('Physique100', '테스트 알림입니다 💪', 'test'); };
 
@@ -256,15 +463,14 @@ function scheduleCheck(){
   if (!cfg.on) return;
   const now = new Date(), [h, mi] = cfg.time.split(':').map(Number);
   const at = new Date(now); at.setHours(h, mi, 0, 0);
-  if (logs[today()]?.length) { at.setDate(at.getDate() + 1); }      // 오늘 했으면 내일로
+  if (has(today())) { at.setDate(at.getDate() + 1); }               // 오늘 했으면 내일로
   else if (at <= now) { fire(); at.setDate(at.getDate() + 1); }     // 이미 지났는데 안 했으면 즉시
   timer = setTimeout(scheduleCheck, Math.max(1000, at - now));
-  // 지원하는 브라우저(Android Chrome 일부)에선 앱이 꺼져 있어도 울리도록 예약 시도
-  tryTrigger(at);
+  tryTrigger(at);   // 지원하는 브라우저에선 앱이 꺼져 있어도 울리도록 예약 시도
 }
 function fire(){
   const k = today();
-  if (store.get('p100.lastAlarm') === k || logs[k]?.length) return;
+  if (store.get('p100.lastAlarm') === k || has(k)) return;
   store.set('p100.lastAlarm', k);
   notify('오늘 운동 아직이에요! 🏃', '잠깐이라도 기록을 남겨봐요.', 'daily');
 }
@@ -279,7 +485,7 @@ async function tryTrigger(at){
     });
   }catch{}
 }
-document.addEventListener('visibilitychange', () => { if (!document.hidden){ render(); scheduleCheck(); flush(); } });
+document.addEventListener('visibilitychange', () => { if (!document.hidden){ if (tab) render(); scheduleCheck(); flush(); } });
 
 /* ---------- google sheet sync ---------- */
 let queue = store.get('p100.queue', []);
@@ -309,19 +515,20 @@ async function flush(){
   }catch(e){ setStatus('동기화 대기 중 (' + e.message + ') — 연결되면 다시 시도해요'); }
   flushing = false;
 }
+function readSyncInputs(){ cfg.sync = { url: $('syncUrl').value.trim(), token: $('syncToken').value.trim() }; }
 $('syncPull').onclick = async () => {
-  cfg.sync = { url: $('syncUrl').value.trim(), token: $('syncToken').value.trim() };
+  readSyncInputs();
   if (!syncOn()) return setStatus('URL과 토큰을 입력하세요.');
   if (!confirm('현재 폰의 기록을 시트 내용으로 덮어쓸까요?')) return;
   try{
     setStatus('불러오는 중...');
     const j = await call({ action: 'list' });
     logs = j.logs; save(); queue = []; store.set('p100.queue', queue);
-    store.set('p100.cfg', cfg); render(); setStatus('불러오기 완료 ✓');
+    store.set('p100.cfg', cfg); setStatus('불러오기 완료 ✓');
   }catch(e){ setStatus('실패: ' + e.message); }
 };
 $('syncPushAll').onclick = async () => {
-  cfg.sync = { url: $('syncUrl').value.trim(), token: $('syncToken').value.trim() };
+  readSyncInputs();
   if (!syncOn()) return setStatus('URL과 토큰을 입력하세요.');
   store.set('p100.cfg', cfg);
   for (const [date, list] of Object.entries(logs)) list.forEach(entry => queue.push({ action: 'upsert', date, entry }));
@@ -342,7 +549,7 @@ $('file').onchange = async e => {
     const d = JSON.parse(await e.target.files[0].text());
     if (!d.logs || !confirm('현재 기록을 불러온 백업으로 덮어쓸까요?')) return;
     logs = d.logs; if (d.cfg) cfg = { ...cfg, on: d.cfg.on, time: d.cfg.time };
-    save(); store.set('p100.cfg', cfg); render(); scheduleCheck();
+    save(); store.set('p100.cfg', cfg); fillSettings(); scheduleCheck();
   }catch{ alert('올바른 백업 파일이 아니에요.'); }
   e.target.value = '';
 };
