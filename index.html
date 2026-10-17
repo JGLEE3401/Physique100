@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111418">
+<title>Physique100</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg">
+<style>
+:root{--bg:#111418;--card:#1b2027;--line:#2a313b;--text:#e8edf2;--dim:#8a95a3;--ok:#4ade80;--miss:#f87171;--acc:#4ade80}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,"Noto Sans KR",sans-serif;padding:env(safe-area-inset-top) 16px 40px}
+main{max-width:480px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+h1{font-size:18px;margin:0}
+button{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--acc);color:#0b140e;border-color:var(--acc);font-weight:600}
+button.danger{color:var(--miss)}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.nav b{font-size:18px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{text-align:center;color:var(--dim);font-size:12px;padding:4px 0}
+.day{aspect-ratio:1;background:var(--card);border:1px solid transparent;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;font-size:14px;position:relative}
+.day.empty{background:none;cursor:default}
+.day.today{border-color:var(--text)}
+.day.done{background:#16301f;color:var(--ok);font-weight:600}
+.day.miss{color:var(--miss)}
+.day.future{color:var(--dim)}
+.day small{font-size:10px;opacity:.8}
+.stats{display:flex;gap:8px;margin:16px 0}
+.stats div{flex:1;background:var(--card);border-radius:10px;padding:10px;text-align:center}
+.stats b{display:block;font-size:20px;color:var(--ok)}
+.stats span{font-size:12px;color:var(--dim)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+dialog{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:16px;width:min(440px,calc(100% - 24px));padding:18px;max-height:90vh}
+dialog::backdrop{background:#000a}
+dialog h2{margin:0 0 12px;font-size:17px}
+label{display:block;font-size:12px;color:var(--dim);margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.entry{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
+.entry p{margin:2px 0 0;color:var(--dim);font-size:13px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.hint{font-size:12px;color:var(--dim);margin-top:8px}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>💪 Physique100</h1><button id="btnSettings">⚙ 알람 설정</button></header>
+
+  <div class="nav">
+    <button id="prev">‹</button><b id="title"></b><button id="next">›</button>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <div class="stats">
+    <div><b id="sMonth">0</b><span>이번 달 운동일</span></div>
+    <div><b id="sStreak">0</b><span>연속 일수</span></div>
+    <div><b id="sTotal">0</b><span>전체 운동일</span></div>
+  </div>
+  <div class="tools">
+    <button id="btnExport">백업 내보내기</button>
+    <button id="btnImport">백업 불러오기</button>
+    <input type="file" id="file" accept="application/json" hidden>
+  </div>
+</main>
+
+<dialog id="dayDlg">
+  <h2 id="dayTitle"></h2>
+  <div id="entries"></div>
+  <form id="form" method="dialog">
+    <input type="hidden" id="editId">
+    <label>운동 종류</label>
+    <input id="type" list="types" placeholder="예: 스쿼트, 러닝, 벤치프레스" required>
+    <datalist id="types"></datalist>
+    <div class="row">
+      <div><label>세트</label><input id="sets" type="number" min="0" inputmode="numeric"></div>
+      <div><label>횟수(회)</label><input id="reps" type="number" min="0" inputmode="numeric"></div>
+      <div><label>무게(kg)</label><input id="weight" type="number" min="0" step="0.5" inputmode="decimal"></div>
+    </div>
+    <div class="row">
+      <div><label>운동 시간(분)</label><input id="minutes" type="number" min="0" inputmode="numeric"></div>
+      <div><label>거리(km)</label><input id="distance" type="number" min="0" step="0.01" inputmode="decimal"></div>
+    </div>
+    <label>메모</label>
+    <textarea id="memo" rows="2"></textarea>
+    <div class="actions">
+      <button type="button" id="dayClose">닫기</button>
+      <button class="primary" id="save" type="submit">추가</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="setDlg">
+  <h2>알람 설정</h2>
+  <label><input type="checkbox" id="alarmOn" style="width:auto"> 운동 안 한 날 알람 받기</label>
+  <label>알람 시간</label>
+  <input type="time" id="alarmTime" value="20:00">
+  <p class="hint">설정한 시간까지 그날 운동 기록이 없으면 알림이 옵니다. 앱(홈 화면에 추가한 앱 포함)이 열려 있거나 백그라운드에 살아 있을 때 동작합니다.</p>
+  <div class="actions">
+    <button id="setTest" type="button">테스트 알림</button>
+    <button id="setClose" type="button">닫기</button>
+    <button class="primary" id="setSave" type="button">저장</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } },
+  set(k, v){ localStorage.setItem(k, JSON.stringify(v)) }
+};
+let logs = store.get('p100.logs', {});            // { 'YYYY-MM-DD': [entry,...] }
+let cfg  = store.get('p100.cfg', { on: false, time: '20:00' });
+const save = () => store.set('p100.logs', logs);
+
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today = () => ymd(new Date());
+let view = new Date(); view.setDate(1);
+let selected = null;
+
+/* ---------- calendar ---------- */
+function render(){
+  const y = view.getFullYear(), m = view.getMonth();
+  $('title').textContent = `${y}년 ${m+1}월`;
+  const g = $('grid'); g.innerHTML = '';
+  '일월화수목금토'.split('').forEach(c => g.insertAdjacentHTML('beforeend', `<div class="dow">${c}</div>`));
+  const first = new Date(y, m, 1).getDay(), last = new Date(y, m+1, 0).getDate(), t = today();
+  for (let i = 0; i < first; i++) g.insertAdjacentHTML('beforeend', '<div class="day empty"></div>');
+  for (let d = 1; d <= last; d++){
+    const key = ymd(new Date(y, m, d)), n = (logs[key] || []).length;
+    const cls = ['day'];
+    if (key === t) cls.push('today');
+    if (n) cls.push('done'); else if (key < t) cls.push('miss'); else if (key > t) cls.push('future');
+    const el = document.createElement('div');
+    el.className = cls.join(' ');
+    el.innerHTML = `${d}${n ? `<small>✓ ${n}</small>` : ''}`;
+    el.onclick = () => openDay(key);
+    g.appendChild(el);
+  }
+  stats();
+}
+function stats(){
+  const keys = Object.keys(logs).filter(k => logs[k].length);
+  const prefix = `${view.getFullYear()}-${String(view.getMonth()+1).padStart(2,'0')}`;
+  $('sMonth').textContent = keys.filter(k => k.startsWith(prefix)).length;
+  $('sTotal').textContent = keys.length;
+  let s = 0, d = new Date();
+  if (!logs[ymd(d)]?.length) d.setDate(d.getDate()-1);   // 오늘 아직이면 어제부터 셈
+  while (logs[ymd(d)]?.length){ s++; d.setDate(d.getDate()-1); }
+  $('sStreak').textContent = s;
+}
+$('prev').onclick = () => { view.setMonth(view.getMonth()-1); render(); };
+$('next').onclick = () => { view.setMonth(view.getMonth()+1); render(); };
+
+/* ---------- day dialog ---------- */
+const fields = ['type','sets','reps','weight','minutes','distance','memo'];
+function openDay(key){
+  selected = key;
+  const [y,m,d] = key.split('-');
+  $('dayTitle').textContent = `${y}년 ${+m}월 ${+d}일`;
+  resetForm(); listEntries();
+  const types = [...new Set(Object.values(logs).flat().map(e => e.type))];
+  $('types').innerHTML = types.map(t => `<option value="${t.replace(/"/g,'&quot;')}">`).join('');
+  $('dayDlg').showModal();
+}
+function resetForm(){
+  fields.forEach(f => $(f).value = ''); $('editId').value = ''; $('save').textContent = '추가';
+}
+function summary(e){
+  const p = [];
+  if (e.sets || e.reps) p.push(`${e.sets ? e.sets + '세트 ' : ''}${e.reps ? e.reps + '회' : ''}`.trim());
+  if (e.weight) p.push(`${e.weight}kg`);
+  if (e.minutes) p.push(`${e.minutes}분`);
+  if (e.distance) p.push(`${e.distance}km`);
+  return p.join(' · ');
+}
+function listEntries(){
+  const box = $('entries'); box.innerHTML = '';
+  (logs[selected] || []).forEach(e => {
+    const div = document.createElement('div'); div.className = 'entry';
+    const info = document.createElement('div');
+    const b = document.createElement('b'); b.textContent = e.type;
+    const p = document.createElement('p'); p.textContent = [summary(e), e.memo].filter(Boolean).join(' — ');
+    info.append(b, p);
+    const btns = document.createElement('div');
+    const ed = document.createElement('button'); ed.textContent = '수정';
+    ed.onclick = () => { fields.forEach(f => $(f).value = e[f] ?? ''); $('editId').value = e.id; $('save').textContent = '수정 저장'; };
+    const del = document.createElement('button'); del.textContent = '삭제'; del.className = 'danger';
+    del.onclick = () => {
+      if (!confirm('이 기록을 삭제할까요?')) return;
+      logs[selected] = logs[selected].filter(x => x.id !== e.id);
+      if (!logs[selected].length) delete logs[selected];
+      save(); listEntries(); render(); resetForm();
+    };
+    btns.style.cssText = 'display:flex;gap:4px;align-items:flex-start';
+    btns.append(ed, del); div.append(info, btns); box.appendChild(div);
+  });
+}
+$('form').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const data = {}; fields.forEach(f => data[f] = $(f).value.trim());
+  const id = $('editId').value;
+  const list = logs[selected] = logs[selected] || [];
+  if (id){ Object.assign(list.find(x => x.id === id), data); }
+  else list.push({ id: crypto.randomUUID(), ...data });
+  save(); resetForm(); listEntries(); render(); scheduleCheck();
+});
+$('dayClose').onclick = () => $('dayDlg').close();
+
+/* ---------- alarm ---------- */
+$('btnSettings').onclick = () => {
+  $('alarmOn').checked = cfg.on; $('alarmTime').value = cfg.time; $('setDlg').showModal();
+};
+$('setClose').onclick = () => $('setDlg').close();
+async function ensurePermission(){
+  if (!('Notification' in window)) { alert('이 브라우저는 알림을 지원하지 않아요.'); return false; }
+  if (Notification.permission === 'default') await Notification.requestPermission();
+  if (Notification.permission !== 'granted'){ alert('알림 권한이 꺼져 있어요. 브라우저/기기 설정에서 허용해 주세요.'); return false; }
+  return true;
+}
+async function notify(title, body, tag){
+  const reg = await navigator.serviceWorker?.ready;
+  const opts = { body, tag, icon: 'icons/icon.svg', badge: 'icons/icon.svg' };
+  if (reg) reg.showNotification(title, opts); else new Notification(title, opts);
+}
+$('setSave').onclick = async () => {
+  cfg = { on: $('alarmOn').checked, time: $('alarmTime').value || '20:00' };
+  if (cfg.on && !(await ensurePermission())) cfg.on = false;
+  store.set('p100.cfg', cfg); $('setDlg').close(); scheduleCheck();
+};
+$('setTest').onclick = async () => { if (await ensurePermission()) notify('Physique100', '테스트 알림입니다 💪', 'test'); };
+
+let timer;
+function scheduleCheck(){
+  clearTimeout(timer);
+  if (!cfg.on) return;
+  const now = new Date(), [h, mi] = cfg.time.split(':').map(Number);
+  const at = new Date(now); at.setHours(h, mi, 0, 0);
+  if (logs[today()]?.length) { at.setDate(at.getDate() + 1); }      // 오늘 했으면 내일로
+  else if (at <= now) { fire(); at.setDate(at.getDate() + 1); }     // 이미 지났는데 안 했으면 즉시
+  timer = setTimeout(scheduleCheck, Math.max(1000, at - now));
+  // 지원하는 브라우저(Android Chrome 일부)에선 앱이 꺼져 있어도 울리도록 예약 시도
+  tryTrigger(at);
+}
+function fire(){
+  const k = today();
+  if (store.get('p100.lastAlarm') === k || logs[k]?.length) return;
+  store.set('p100.lastAlarm', k);
+  notify('오늘 운동 아직이에요! 🏃', '잠깐이라도 기록을 남겨봐요.', 'daily');
+}
+async function tryTrigger(at){
+  try{
+    if (!('showTrigger' in Notification.prototype) || Notification.permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    (await reg.getNotifications({ includeTriggered: false })).filter(n => n.tag === 'scheduled').forEach(n => n.close());
+    await reg.showNotification('오늘 운동 아직이에요! 🏃', {
+      tag: 'scheduled', body: '잠깐이라도 기록을 남겨봐요.', icon: 'icons/icon.svg',
+      showTrigger: new TimestampTrigger(at.getTime())
+    });
+  }catch{}
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden){ render(); scheduleCheck(); } });
+
+/* ---------- backup ---------- */
+$('btnExport').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify({ logs, cfg }, null, 2)], { type: 'application/json' }));
+  a.download = `physique100-${today()}.json`; a.click();
+};
+$('btnImport').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  try{
+    const d = JSON.parse(await e.target.files[0].text());
+    if (!d.logs || !confirm('현재 기록을 불러온 백업으로 덮어쓸까요?')) return;
+    logs = d.logs; if (d.cfg) cfg = d.cfg;
+    save(); store.set('p100.cfg', cfg); render(); scheduleCheck();
+  }catch{ alert('올바른 백업 파일이 아니에요.'); }
+  e.target.value = '';
+};
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+render(); scheduleCheck();
+</script>
+</body>
+</html>

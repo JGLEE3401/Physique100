@@ -1,0 +1,10 @@
+{
+  "name": "Physique100 운동 기록",
+  "short_name": "Physique100",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#111418",
+  "theme_color": "#111418",
+  "lang": "ko",
+  "icons": [{ "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
